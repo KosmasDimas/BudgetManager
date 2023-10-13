@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Today's expenses
+{% endblock %}
+
+{% block main %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="container d-flex align-items-center flex-column" style="gap: 40px">
+    <div class="d-flex align-items-center justify-content-center" style="gap: 40px">
+        <a class="link-success" href="/graphs/monthly" style="font-size:20px; font-weight: bold">Monthly</a>
+        <a class="link-success" href="/graphs/yearly" style="font-size:20px; font-weight: bold">Yearly</a>
+    </div>
+
+    <div style="position: relative; height:500px; width:500px;">
+        <canvas id="pieChart"></canvas>
+    </div>
+    <div style="position: relative; height:500px; width:500px;">
+        <canvas id="barChart"></canvas>
+    </div>
+</div>
+    <script>
+        const pieCtx = document.getElementById('pieChart');
+        const pieData = {{category_sums | tojson}}
+        const pieChart = new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: pieData.map(
+                    (item) => item.type
+                ),
+                datasets: [{
+                    label: 'Expenses',
+                    data: pieData.map(
+                        (item) => item.sum
+                    ),
+                    borderWidth: 1
+                }]
+            },
+        });
+
+        const barCtx = document.getElementById('barChart');
+        const barData = {{sums_by_date | tojson}}
+        const barChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: barData.map(
+                    (item) => item.spent_at
+                ),
+                datasets: [{
+                    label: 'Expenses',
+                    data: barData.map(
+                        (item) => item.sum
+                    ),
+                    borderWidth: 1
+                }]
+            },
+        });
+    </script>
+
+{% endblock %}

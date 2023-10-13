@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Today's expenses
+{% endblock %}
+
+{% block main %}
+    {% if rows|length == 0 %}
+        <a href="/add" class="link-success" style="font-size:20px; font-weight: bold">
+            Add you first expense!
+        </a>
+    {% else %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <div class="container d-flex align-items-center flex-column" style="gap: 40px">
+        <!-- Content here -->
+        <h1>Recent expenses</h1>
+
+        <div style="position: relative; height:500px; width:500px;">
+            <canvas id="myChart"></canvas>
+        </div>
+        <table class="table pull-right">
+            <thead>
+              <tr>
+                <th scope="col">Amount</th>
+                <th scope="col">Type</th>
+                <th scope="col">Spent At</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for row in rows %}
+                <tr id="list-item-{{row.id}}">
+                    <td>
+                        {{row.amound| euro}}
+                    </td>
+                    <td>
+                        {{row.type}}
+                    </td>
+                    <td>
+                        {{row.spent_at}}
+                    </td>
+                    <td>
+                        <button type="button" class="delete-btn btn btn-danger" id="delete-{{row.id}}">Delete</button>
+                    </td>
+                </tr>
+            {% endfor%}
+            </tbody>
+          </table>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+                const ctx = document.getElementById('myChart');
+            const chart_data = {{sums | tojson}}
+            console.log(chart_data)
+
+            const chart = new Chart(ctx, {
+                type: 'pie',
+                options: {
+                    aspectRatio: 1
+                },
+                data: {
+                    labels: chart_data.map(
+                        (item) => item.type
+                    ),
+                    datasets: [{
+                        label: 'Expenses',
+
+                        data: chart_data.map(
+                            (item) => item.sum
+                        ),
+
+                        borderWidth: 1
+                    }]
+                },
+            });
+            const btns = document.getElementsByClassName('delete-btn');
+            console.log(btns)
+            for (const button of btns) {
+                const id = button.getAttribute('id').split('-')[1]
+                button.addEventListener('click', function() {
+                    const data = new FormData()
+                    data.append("id", id)
+                    fetch("/delete", {
+                        method: "POST",
+                        body: data, // body data type must match "Content-Type" header
+                    }).then(function() {
+                        location.reload();
+                    })
+                })
+            }
+
+        })
+    </script>
+    {% endif %}
+
+
+{% endblock %}

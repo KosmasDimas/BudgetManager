@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Add an expense
+{% endblock %}
+
+{% block main %}
+<div class="container d-flex align-items-center flex-column" style="gap: 40px">
+    <h1>Add transaction</h1>
+    <form action="/add" method="post" class="row gy-2 gx-3 align-items-center">
+
+        <div class="col-auto">
+            <label class="visually-hidden" for="type">Type</label>
+            <select class="form-select" id="type" name = "type" required="True">
+
+                <option disabled selected></option>
+
+
+                {% for row in rows %}
+                    <option id={{row.type}} value={{row.type}}>{{row.type}}</option>
+                {% endfor %}
+
+
+            </select>
+        </div>
+
+        <div class="col-auto">
+            <label class="visually-hidden" for="amound">amound</label>
+            <div class="input-group">
+                <div class="input-group-text">€</div>
+                <input type="number" min= 0 required class="form-control" name = "amound" id="amound" placeholder="amound">
+            </div>
+        </div>
+
+        <div class="col-auto">
+            <label class="visually-hidden" for="date">Date</label>
+            <input type="date" required class="form-control" name = "date" id="date" placeholder="date">
+        </div>
+
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

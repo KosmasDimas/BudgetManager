@@ -40,8 +40,11 @@ def login_required(f):
 
 def usd(value):
     """Format value as USD."""
-    return f"${value:,.2f}"
+    return "${value:,.2f}"
 
 def euro(value):
+    print(type(value))
     """Format value as EURO."""
-    return f"€{value:,.2f}"
+    if value != '':
+        return "€ "+"{:.2f}".format(value)
+    return "€"+"{:.2f}".format(0)

@@ -20,48 +20,84 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-# Configure CS50 Library to use SQLite database
-db = sqlite3.connect("budget.db", check_same_thread=False)
+# configure the db connnection
+connection = sqlite3.connect("budget.db", check_same_thread=False)
+# configure a connection cursor
+cur = connection.cursor()
+
 
 
 def select_recent_expenses(user_id, number):
-    return db.execute(
+    answer = []
+
+    cur.execute(
         "SELECT id, amound, type, spent_at FROM transactions WHERE user_id = ? ORDER BY spent_at DESC LIMIT ?",
-        user_id,
-        number,
+        [user_id,
+        number,]
     )
+    names = list(map(lambda x: x[0], cur.description))
+    rows = cur.fetchall()
+    for row in rows:
+        answer.append(dict(zip(names, row)))
+    return answer
 
 
 def select_sum_of_category(user_id, number):
-    return db.execute(
+    answer = []
+
+    cur.execute(
         "SELECT SUM(amound) as sum, type FROM transactions WHERE user_id = ? GROUP BY type ORDER BY spent_at DESC LIMIT ?",
-        user_id,
-        number,
+        [user_id,
+        number,]
     )
+    names = list(map(lambda x: x[0], cur.description))
+    rows = cur.fetchall()
+    for row in rows:
+        answer.append(dict(zip(names, row)))
+    return answer
 
 
 def select_sum_of_category_by_date(user_id, date_str):
-    return db.execute(
+    answer = []
+    cur.execute(
         "SELECT SUM(amound) AS sum, type FROM transactions WHERE user_id = ? AND spent_at LIKE ? GROUP BY type",
-        user_id,
-        date_str + "%",
+        [user_id,
+        date_str + "%",]
     )
+    names = list(map(lambda x: x[0], cur.description))
+    rows = cur.fetchall()
+    for row in rows:
+        print(row)
+        answer.append(dict(zip(names, row)))
+    return answer
 
 
 def select_sum_by_date(user_id, date_str):
-    return db.execute(
+    answer = []
+    cur.execute(
         "SELECT SUM(amound) AS sum, spent_at FROM transactions WHERE user_id = ? AND spent_at LIKE ? GROUP BY spent_at",
-        user_id,
-        date_str + "%",
+        [user_id,
+        date_str + "%",]
     )
-
+    names = list(map(lambda x: x[0], cur.description))
+    rows = cur.fetchall()
+    for row in rows:
+        answer.append(dict(zip(names, row)))
+    return answer
+    
 
 def select_sum_by_month(user_id, date_str):
-    return db.execute(
+    answer = []   
+    cur.execute(
         "SELECT SUM(amound) AS sum,  STRFTIME('%Y-%m', spent_at) as spent_at FROM transactions WHERE user_id = ? AND spent_at LIKE ? GROUP BY STRFTIME('%Y-%m', spent_at)",
-        user_id,
-        date_str + "%",
+        [user_id,
+        date_str + "%",]
     )
+    names = list(map(lambda x: x[0], cur.description))
+    rows = cur.fetchall()
+    for row in rows:
+        answer.append(dict(zip(names, row)))
+    return answer
 
 
 @app.after_request
@@ -78,8 +114,9 @@ def after_request(response):
 def index():
     """Show history of todays transactions by user"""
     rows = select_recent_expenses(session["user_id"], 10)
+    # print(rows)
     sums = select_sum_of_category(session["user_id"], 10)
-    print(sums)
+    # print(sums)
     return render_template("home.html", rows=rows, sums=sums)
 
 
@@ -87,10 +124,11 @@ def index():
 @login_required
 def add():
     # Query database for transaction types
-    rows = db.execute("SELECT type FROM tr_types")
+    cur.execute("SELECT type FROM tr_types")
+    rows = cur.fetchall()
     types = []
     for row in rows:
-        types.append(row["type"])
+        types.append(row[0])
     # print(types)
     # print(request.form)
 
@@ -106,21 +144,21 @@ def add():
             return apology("must provide a valid date", 400)
         # ensure it is a valid date
         date = request.form.get("date")
-        print(date)
+        # print(date)
 
-        db.execute(
+        cur.execute(
             "INSERT INTO transactions (user_id, type, amound, spent_at) VALUES (?,?,?,?)",
-            session["user_id"],
+            [session["user_id"],
             request.form.get("type"),
             round(float(request.form.get("amound")), 2),
-            request.form.get("date"),
+            request.form.get("date"),]
         )
 
         return redirect("/")
 
     else:
         if len(rows) > 0:
-            return render_template("add.html", rows=rows)
+            return render_template("add.html", rows=types)
 
 
 @app.route("/home")
@@ -149,18 +187,16 @@ def login():
             return apology("must provide password", 403)
 
         # Query database for username
-        rows = db.execute(
-            "SELECT * FROM users WHERE username = ?", request.form.get("username")
-        )
-
+        cur.execute('SELECT * FROM users WHERE username = ?', [request.form.get("username")])
+        rows = cur.fetchall()
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(
-            rows[0]["hash"], request.form.get("password")
+            rows[0][2], request.form.get("password")
         ):
             return apology("invalid username and/or password", 403)
 
         # Remember which user has logged in
-        session["user_id"] = rows[0]["id"]
+        session["user_id"] = rows[0][0]
 
         # Redirect user to home page
         return redirect("/")
@@ -188,7 +224,7 @@ def register():
         # Ensure username was submitted
         if not request.form.get("username"):
             return apology("must provide username", 400)
-        elif db.execute(
+        elif cur.execute(
             "SELECT username FROM users WHERE username = ?",
             request.form.get("username"),
         ):
@@ -202,7 +238,7 @@ def register():
         # Ensure password and confirmation are identical
         elif request.form.get("password") != request.form.get("confirmation"):
             return apology("password and confirmation do not match", 400)
-        db.execute(
+        cur.execute(
             "INSERT INTO users (username, hash) VALUES (?,?)",
             request.form.get("username"),
             generate_password_hash(request.form.get("password")),
@@ -219,10 +255,10 @@ def register():
 def sell():
     """Sell shares of stock"""
     print(request.form)
-    db.execute(
+    cur.execute(
         "DELETE FROM transactions WHERE user_id = ? AND id = ?",
-        session["user_id"],
-        request.form.get("id"),
+        [session["user_id"],
+        request.form.get("id"),]
     )
     return redirect("/")
 
@@ -239,8 +275,11 @@ def graphs_monthly():
     current_month = (
         str(datetime.now().year) + "-" + ("0" + str(datetime.now().month))[-2::]
     )
+    print(current_month)
     category_sums = select_sum_of_category_by_date(session["user_id"], current_month)
+    print(category_sums)
     sums_by_date = select_sum_by_date(session["user_id"], current_month)
+    print(sums_by_date)
     return render_template(
         "graphs.html", category_sums=category_sums, sums_by_date=sums_by_date
     )

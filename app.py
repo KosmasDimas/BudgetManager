@@ -67,7 +67,6 @@ def select_sum_of_category_by_date(user_id, date_str):
     names = list(map(lambda x: x[0], cur.description))
     rows = cur.fetchall()
     for row in rows:
-        print(row)
         answer.append(dict(zip(names, row)))
     return answer
 
@@ -114,9 +113,7 @@ def after_request(response):
 def index():
     """Show history of todays transactions by user"""
     rows = select_recent_expenses(session["user_id"], 10)
-    # print(rows)
     sums = select_sum_of_category(session["user_id"], 10)
-    # print(sums)
     return render_template("home.html", rows=rows, sums=sums)
 
 
@@ -129,8 +126,6 @@ def add():
     types = []
     for row in rows:
         types.append(row[0])
-    # print(types)
-    # print(request.form)
 
     if request.method == "POST":
         # ensure a type was submited and was in registered types
@@ -144,7 +139,6 @@ def add():
             return apology("must provide a valid date", 400)
         # ensure it is a valid date
         date = request.form.get("date")
-        # print(date)
 
         cur.execute(
             "INSERT INTO transactions (user_id, type, amound, spent_at) VALUES (?,?,?,?)",
@@ -153,6 +147,7 @@ def add():
             round(float(request.form.get("amound")), 2),
             request.form.get("date"),]
         )
+        connection.commit()
 
         return redirect("/")
 
@@ -243,6 +238,7 @@ def register():
             request.form.get("username"),
             generate_password_hash(request.form.get("password")),
         )
+        connection.commit()
         return render_template("login.html")
 
     # User reached route via GET (as by clicking a link or via redirect)
@@ -254,7 +250,6 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    print(request.form)
     cur.execute(
         "DELETE FROM transactions WHERE user_id = ? AND id = ?",
         [session["user_id"],
@@ -275,11 +270,9 @@ def graphs_monthly():
     current_month = (
         str(datetime.now().year) + "-" + ("0" + str(datetime.now().month))[-2::]
     )
-    print(current_month)
+    connection.commit()
     category_sums = select_sum_of_category_by_date(session["user_id"], current_month)
-    print(category_sums)
     sums_by_date = select_sum_by_date(session["user_id"], current_month)
-    print(sums_by_date)
     return render_template(
         "graphs.html", category_sums=category_sums, sums_by_date=sums_by_date
     )

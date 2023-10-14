@@ -21,7 +21,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Configure CS50 Library to use SQLite database
-db = sqlite3.connect("sqlite:///budget.db")
+db = sqlite3.connect("budget.db")
 
 
 def select_recent_expenses(user_id, number):
